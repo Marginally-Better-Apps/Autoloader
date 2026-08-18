@@ -12,6 +12,7 @@ import SwiftUI
 final class AppFileHandler: NSObject, @unchecked Sendable {
 	private let _fileManager = FileManager.default
 	private let _uuid = UUID().uuidString
+	var importedUUID: String { _uuid }
 	private let _uniqueWorkDir: URL
 	var uniqueWorkDirPayload: URL?
 
@@ -109,19 +110,23 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 		let app = try await _directory()
 		
 		guard let appUrl = _fileManager.getPath(in: app, for: "app") else {
-			return
+			throw ImportedFileHandlerError.appBundleNotFound
 		}
 		
 		let bundle = Bundle(url: appUrl)
 		
-		Storage.shared.addImported(
-			uuid: _uuid,
-			source: _sourceProvenance?.sourceRepositoryURL,
-			appName: bundle?.name,
-			appIdentifier: bundle?.bundleIdentifier,
-			appVersion: bundle?.version,
-			appIcon: bundle?.iconFileName
-		) { _ in }
+		await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+			Storage.shared.addImported(
+				uuid: _uuid,
+				source: _sourceProvenance?.sourceRepositoryURL,
+				appName: bundle?.name,
+				appIdentifier: bundle?.bundleIdentifier,
+				appVersion: bundle?.version,
+				appIcon: bundle?.iconFileName
+			) { _ in
+				continuation.resume()
+			}
+		}
 		
 		if let sourceProvenance = _sourceProvenance {
 			Storage.shared.addSourceMetadata(
@@ -142,6 +147,14 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	}
 }
 
-private enum ImportedFileHandlerError: Error {
+private enum ImportedFileHandlerError: Error, LocalizedError {
 	case payloadNotFound
+	case appBundleNotFound
+
+	var errorDescription: String? {
+		switch self {
+		case .payloadNotFound: "Unable to locate Payload."
+		case .appBundleNotFound: "Unable to locate the app bundle."
+		}
+	}
 }

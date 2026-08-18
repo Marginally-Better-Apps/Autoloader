@@ -169,8 +169,11 @@ struct InstallPreviewView: View {
 							}
 						}
 					} else if await _installationMethod == 1 {
-						let handler = await InstallationProxy(viewModel: viewModel)
-						try await handler.install(at: packageUrl, suspend: app.identifier == Bundle.main.bundleIdentifier!)
+						try await AutoloaderInstaller.shared.installOrUpgrade(
+							app: app,
+							viewModel: viewModel,
+							suspend: app.identifier == Bundle.main.bundleIdentifier
+						)
 					}
 				} else {
 					let package = try await handler.moveToArchive(packageUrl, shouldOpen: !_useShareSheet)

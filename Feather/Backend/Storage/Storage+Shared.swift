@@ -40,6 +40,20 @@ extension Storage {
 		}
 		return nil
 	}
+
+	func imported(uuid: String) -> Imported? {
+		let request: NSFetchRequest<Imported> = Imported.fetchRequest()
+		request.predicate = NSPredicate(format: "uuid == %@", uuid)
+		request.fetchLimit = 1
+		return try? context.fetch(request).first
+	}
+
+	func signed(uuid: String) -> Signed? {
+		let request: NSFetchRequest<Signed> = Signed.fetchRequest()
+		request.predicate = NSPredicate(format: "uuid == %@", uuid)
+		request.fetchLimit = 1
+		return try? context.fetch(request).first
+	}
 }
 
 // MARK: - Helpers

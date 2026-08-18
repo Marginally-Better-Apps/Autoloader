@@ -22,6 +22,7 @@ struct FeatherApp: App {
 	var body: some Scene {
 		WindowGroup {
 			VStack {
+				AutoloaderStatusHeader()
 				DownloadHeaderView(downloadManager: downloadManager)
 					.transition(.move(edge: .top).combined(with: .opacity))
 				VariedTabbarView()
@@ -50,6 +51,11 @@ struct FeatherApp: App {
 	}
 	
 	private func _handleURL(_ url: URL) {
+		if url.scheme?.lowercased() == AutoloaderRequest.scheme {
+			AutoloaderCoordinator.shared.handle(url: url)
+			return
+		}
+
 		if url.scheme == "feather" {
 			/// feather://import-certificate?p12=<base64>&mobileprovision=<base64>&password=<base64>
 			if url.host == "import-certificate" {
@@ -152,7 +158,22 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
 		_addDefaultCertificates()
+		if let url = launchOptions?[.url] as? URL {
+			AutoloaderCoordinator.shared.handle(url: url)
+		}
 		return true
+	}
+
+	func application(
+		_ app: UIApplication,
+		open url: URL,
+		options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+	) -> Bool {
+		if url.scheme?.lowercased() == AutoloaderRequest.scheme {
+			AutoloaderCoordinator.shared.handle(url: url)
+			return true
+		}
+		return false
 	}
 	
 	private func _createPipeline() {

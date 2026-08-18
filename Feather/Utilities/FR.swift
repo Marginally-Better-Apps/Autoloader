@@ -13,6 +13,100 @@ import AltSourceKit
 import IDeviceSwift
 
 enum FR {
+	static func importPackage(_ ipa: URL) async throws -> ImportedArtifact {
+		try await Task.detached {
+			try await importPackageDetached(ipa)
+		}.value
+	}
+
+	private static func importPackageDetached(_ ipa: URL) async throws -> ImportedArtifact {
+		let handler = AppFileHandler(file: ipa)
+		do {
+			try await handler.copy()
+			try await handler.extract()
+			try await handler.move()
+			try await handler.addToDatabase()
+			try? await handler.clean()
+		} catch {
+			try? await handler.clean()
+			throw error
+		}
+
+		let uuid = handler.importedUUID
+		let directory = FileManager.default.unsigned(uuid)
+		guard let appURL = FileManager.default.getPath(in: directory, for: "app") else {
+			throw AutoloaderError.appBundleNotFound
+		}
+
+		let bundle = Bundle(url: appURL)
+		guard let bundleIdentifier = bundle?.bundleIdentifier, !bundleIdentifier.isEmpty else {
+			throw AutoloaderError.bundleIdentifierMissing
+		}
+
+		return ImportedArtifact(
+			uuid: uuid,
+			appURL: appURL,
+			bundleIdentifier: bundleIdentifier,
+			name: bundle?.name,
+			version: bundle?.version
+		)
+	}
+
+	static func signPackage(
+		_ imported: ImportedArtifact,
+		using options: Options,
+		certificate: CertificatePair
+	) async throws -> SignedArtifact {
+		try await Task.detached {
+			try await signPackageDetached(imported, using: options, certificate: certificate)
+		}.value
+	}
+
+	private static func signPackageDetached(
+		_ imported: ImportedArtifact,
+		using options: Options,
+		certificate: CertificatePair
+	) async throws -> SignedArtifact {
+		let app = AutoloaderAppRef(
+			name: imported.name,
+			version: imported.version,
+			identifier: imported.bundleIdentifier,
+			date: nil,
+			icon: nil,
+			uuid: imported.uuid,
+			source: nil,
+			isSigned: false
+		)
+		let handler = SigningHandler(app: app, options: options)
+		handler.appCertificate = certificate
+
+		do {
+			try await handler.copy()
+			try await handler.modify()
+			try? await handler.clean()
+		} catch {
+			try? await handler.clean()
+			throw error
+		}
+
+		let uuid = handler.signedUUID
+		let directory = FileManager.default.signed(uuid)
+		guard let appURL = FileManager.default.getPath(in: directory, for: "app") else {
+			throw AutoloaderError.appBundleNotFound
+		}
+
+		let bundle = Bundle(url: appURL)
+		let bundleIdentifier = bundle?.bundleIdentifier ?? imported.bundleIdentifier
+		return SignedArtifact(
+			uuid: uuid,
+			appURL: appURL,
+			bundleIdentifier: bundleIdentifier,
+			name: bundle?.name ?? imported.name,
+			version: bundle?.version ?? imported.version,
+			launchScheme: TargetLaunchScheme.make(from: bundleIdentifier)
+		)
+	}
+
 	static func handlePackageFile(
 		_ ipa: URL,
 		download: Download? = nil,

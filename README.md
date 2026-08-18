@@ -1,64 +1,115 @@
-# Feather
+# Autoloader
 
-[![GitHub Release](https://img.shields.io/github/v/release/claration/Feather?include_prereleases)](https://github.com/claration/Feather/releases)
-[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/claration/Feather/total)](https://github.com/claration/Feather/releases)
-[![GitHub License](https://img.shields.io/github/license/claration/Feather?color=%23C96FAD)](https://github.com/claration/Feather/blob/main/LICENSE)
-[![Sponsor Me](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/khcrysalis)
+Autoloader is a [Feather](https://github.com/clamation/Feather) fork for one job: open an `autoloader://` link, install the IPA on this iPhone, and launch the new build.
 
-This app allows you to install and manage applications contained in a single app, using certificate pairs and various installation techniques to allow apps to install to your device. This is an entirely stock application and uses built-in features to be able to do this!
+It is a development-loop tool, not a general IPA storefront. Feather’s certificate, pairing, and signing setup screens are kept so you can configure the app once. After that, a successful install should not ask for extra taps.
 
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="Images/Image-dark.png"><source media="(prefers-color-scheme: light)" srcset="Images/Image-light.png"><img alt="Feather" src="Images/Image-light.png"></picture></p>
+This project remains licensed under **GPL-3.0**. See [LICENSE](./LICENSE) and [UPSTREAM.md](./UPSTREAM.md).
 
-### Features
+## What it does
 
-- User friendly, and clean UI.
-- Sign and install applications.
-- Supports [AltStore](https://faq.altstore.io/distribute-your-apps/make-a-source#apps) repositories.
-- View detailed information about apps and your certificates.
-- Configurable signing options mainly for modifying the app, such as appearance and allowing support for the files app.
-  - This includes patching apps for compatibility and Liquid Glass.
-- Tweak support for advanced users, using [Ellekit](https://github.com/tealbathingsuit/ellekit) for injection. 
-  - Supports injecting `.deb` and `.dylib` files.
-- Actively maintained: always ensuring most apps get installed properly.
-- No tracking or analytics, ensuring user privacy.
-- Of course, open source and free.
+```
+development tooling
+    |
+    | open:
+    | autoloader://install?url=<encoded-url>
+    v
+Autoloader opens
+    |
+    +--> download artifact
+    +--> locate IPA
+    +--> import/extract
+    +--> inject deterministic Autoloader launch URL scheme
+    +--> sign with the configured certificate
+    +--> install/upgrade through idevice/installd
+    +--> launch the newly installed app
+```
 
-## Download
+If the same bundle ID is already installed, Autoloader upgrades it in place. It does not uninstall first.
 
-Visit [releases](https://github.com/claration/Feather/releases) and get the latest `.ipa`.
+## URL protocol
 
-<a href="https://celloserenity.github.io/altdirect/?url=https://raw.githubusercontent.com/claration/Feather/refs/heads/main/app-repo.json" target="_blank">
-   <img src="https://github.com/CelloSerenity/altdirect/blob/main/assets/png/AltSource_Blue.png?raw=true" alt="Add AltSource" width="200">
-</a>
-<a href="https://github.com/claration/Feather/releases/latest/download/Feather.ipa" target="_blank">
-   <img src="https://github.com/CelloSerenity/altdirect/blob/main/assets/png/Download_Blue.png?raw=true" alt="Download .ipa" width="200">
-</a>
+```
+autoloader://install?v=1&url=<percent-encoded-artifact-url>
+```
 
-## How does it work?
+The usual link only needs:
 
-Visit the [HOW IT WORKS](./HOW_IT_WORKS.md) page.
+```
+autoloader://install?url=<encoded-url>
+```
 
-## Sponsors
+Optional query items:
 
-| Thanks to all my [sponsors](https://github.com/sponsors/claration)!! |
-|:-:|
-| <img src="https://sponsors.claration.dev/sponsors.png"> |
-| _**"samara is cute" - Vendicated**_ |
+| Item | Default | Meaning |
+| --- | --- | --- |
+| `v` | `1` | Protocol version |
+| `sha256` | none | Lowercase hex SHA-256 of the artifact |
+| `launch` | `1` | Set `0` to install without launching |
 
-## Acknowledgements
+Use `URLComponents` so inner `?`, `&`, and `=` on the artifact URL survive:
 
-- [Samara](https://github.com/claration) - The maker
-- [idevice](https://github.com/jkcoxson/idevice) - Backend for builds with this included, used for communication with `installd`.
-- [*.backloop.dev](https://backloop.dev/) - localhost with public CA signed SSL certificate
-- [Vapor](https://github.com/vapor/vapor) - A server-side Swift HTTP web framework.
-- [Zsign](https://github.com/zhlynn/zsign) - Allowing to sign on-device, reimplimented to work on other platforms such as iOS.
-- [LiveContainer](https://github.com/LiveContainer/LiveContainer) - Fixes/some help
-- [Nuke](https://github.com/kean/Nuke) - Image caching.
-- [Asspp](https://github.com/Lakr233/Asspp) - Some code for setting up the http server.
-- [plistserver](https://github.com/nekohaxx/plistserver) - Hosted on https://api.palera.in.
+```swift
+func openInAutoloader(_ artifactURL: URL) {
+    var components = URLComponents()
+    components.scheme = "autoloader"
+    components.host = "install"
+    components.queryItems = [
+        URLQueryItem(name: "v", value: "1"),
+        URLQueryItem(name: "url", value: artifactURL.absoluteString)
+    ]
+    guard let url = components.url else { return }
+    UIApplication.shared.open(url)
+}
+```
 
-## License 
+Examples:
 
-This project is licensed under the GPL-3.0 license. You can see the full details of the license [here](https://github.com/claration/Feather/blob/main/LICENSE). It's under this specific license because I wanted to make a project that is transparent to the user thats related to certificate paired sideloading, before this project there weren't any open source projects that filled in this gap.
+```
+autoloader://install?url=https%3A%2F%2Fexample.com%2FMyApp.ipa
+autoloader://install?url=https%3A%2F%2Fexample.com%2Fartifact.zip
+autoloader://install?url=<encoded>&sha256=0123456789abcdef...
+autoloader://install?url=<encoded>&launch=0
+```
 
-By contributing to this project, you agree to license your code under the GPL-3.0 license as well (including agreeing to license exceptions), ensuring that your work, like all other contributions, remains freely accessible and open.
+Direct IPAs are detected by archive structure (`Payload/*.app`), not file extension. A wrapper ZIP may contain one IPA, including inside a subdirectory. Multiple IPAs in one wrapper is an error.
+
+## First-time setup
+
+1. Set `FEATHER_PRODUCT_BUNDLE_IDENTIFIER` in `Feather.xcconfig` to a bundle ID you control. The default is `org.marginallybetter.Autoloader`.
+2. Open `Feather.xcworkspace` (not the project).
+3. Choose your signing team in Xcode. This repo does not include an Apple Team ID.
+4. Build and install Autoloader on a physical iPhone.
+5. Import a signing certificate and an idevice pairing file using the existing Settings flows.
+6. Leave **Automatic installs** on. Add allowed artifact hosts if you want a host allowlist. HTTP is off unless you enable **Allow insecure HTTP** for LAN/Tailscale servers.
+
+Running a build after that should only require opening the `autoloader://` link.
+
+## Build
+
+```
+git clone --recurse-submodules https://github.com/Marginally-Better-Apps/Autoloader.git
+cd Autoloader
+git submodule update --init --recursive
+xed Feather.xcworkspace
+```
+
+Use the `Feather` scheme. Internal Xcode targets and Swift types are still named Feather so this stays mergeable with upstream.
+
+## Status
+
+The Autoloader tab shows the active job (`Downloading… 72%`, `Signing…`, `Installing…`, `Launching…`) and a short history. Errors are shown if something fails. A successful run does not present a confirmation that needs tapping.
+
+## Security
+
+`autoloader://install` can make this app download and sign arbitrary artifacts with your certificate. Settings therefore include:
+
+- Automatic installs
+- Allowed artifact hosts (empty means any HTTPS host)
+- Allow insecure HTTP (off by default)
+
+`file://` and other non-http(s) artifact URLs are rejected.
+
+## Attribution
+
+Autoloader is a fork of Feather by [Samara](https://github.com/clamation). See Feather’s [HOW_IT_WORKS.md](./HOW_IT_WORKS.md) for the underlying signing and idevice installation design. Upstream commit recorded in [UPSTREAM.md](./UPSTREAM.md).

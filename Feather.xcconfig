@@ -6,7 +6,8 @@
 //
 
 FEATHER_PROJECT_VERSION=2.9.0
-FEATHER_PRODUCT_BUNDLE_IDENTIFIER=thewonderofyou.Feather
+// Set this to a bundle ID you control before building Autoloader.
+FEATHER_PRODUCT_BUNDLE_IDENTIFIER=org.marginallybetter.Autoloader
 FEATHER_DISAMBIGUATOR=${DEVELOPMENT_TEAM}
 
 AD_HOC_CODE_SIGNING_ALLOWED = YES

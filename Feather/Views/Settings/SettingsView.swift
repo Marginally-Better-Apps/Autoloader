@@ -56,6 +56,14 @@ struct SettingsView: View {
 					}
 				}
                 
+				NBSection("Autoloader") {
+					NavigationLink(destination: AutoloaderSettingsView()) {
+						Label("Autoloader", systemImage: "arrow.down.app")
+					}
+				} footer: {
+					Text("Automatic install links, artifact hosts, and development options.")
+				}
+                
 				NBSection(.localized("Certificates")) {
                     
 					if let cert = selectedCertificate {

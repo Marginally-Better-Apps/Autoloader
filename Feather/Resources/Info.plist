@@ -114,9 +114,10 @@
 			<key>CFBundleURLIconFile</key>
 			<string>feather_extension</string>
 			<key>CFBundleURLName</key>
-			<string>thewonderofyou.Feather</string>
+			<string>org.marginallybetter.Autoloader</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>autoloader</string>
 				<string>feather</string>
 			</array>
 		</dict>
@@ -200,16 +201,10 @@
 	</array>
 <key>NSAppTransportSecurity</key>
 <dict>
-    <key>NSExceptionDomains</key>
-    <dict>
-        <key>claration.dev</key>
-        <dict>
-            <key>NSIncludesSubdomains</key>
-            <true/>
-            <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
-            <true/>
-        </dict>
-    </dict>
+	<key>NSAllowsArbitraryLoads</key>
+	<true/>
+	<key>NSAllowsLocalNetworking</key>
+	<true/>
 </dict>
 </dict>
 </plist>
