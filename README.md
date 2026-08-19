@@ -14,6 +14,11 @@ https://github.com/Marginally-Better-Apps/Autoloader/releases/latest/download/Au
 
 That build is ad-hoc signed (not Apple-signed). Import it into Feather, sign it with your certificate, and install it. After Autoloader is on the phone, use `autoloader://` links instead of Feather for later builds.
 
+## Docs
+
+- [How Autoloader works, plus the CI/PR install-link guide](./docs/AUTOLOADER.md)
+- [Short contract for LLMs](./docs/LLM.md)
+
 ## What it does
 
 ```
