@@ -17,6 +17,7 @@ That build is ad-hoc signed (not Apple-signed). Import it into Feather, sign it 
 ## Docs
 
 - [How Autoloader works](./docs/AUTOLOADER.md)
+- [PR cycle for other apps](./docs/PR_CYCLE.md)
 - [Short contract for LLMs](./docs/LLM.md)
 
 ## What it does
