@@ -45,7 +45,7 @@ struct FeatherApp: App {
 					UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
 				}
 				
-				UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: UserDefaults.standard.string(forKey: "Feather.userTintColor") ?? "#848ef9"))
+				UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: UserDefaults.standard.string(forKey: "Feather.userTintColor") ?? "#F99484"))
 			}
 		}
 	}
