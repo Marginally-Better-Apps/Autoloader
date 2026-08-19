@@ -6,6 +6,14 @@ It is a development-loop tool, not a general IPA storefront. Feather’s certifi
 
 This project remains licensed under **GPL-3.0**. See [LICENSE](./LICENSE) and [UPSTREAM.md](./UPSTREAM.md).
 
+## Download
+
+Get the unsigned iPhone IPA from [Releases](https://github.com/Marginally-Better-Apps/Autoloader/releases):
+
+https://github.com/Marginally-Better-Apps/Autoloader/releases/latest/download/Autoloader.ipa
+
+That build is ad-hoc signed (not Apple-signed). Import it into Feather, sign it with your certificate, and install it. After Autoloader is on the phone, use `autoloader://` links instead of Feather for later builds.
+
 ## What it does
 
 ```
