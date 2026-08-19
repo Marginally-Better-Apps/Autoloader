@@ -32,7 +32,7 @@ Autoloader opens
     +--> download artifact
     +--> locate IPA
     +--> import/extract
-    +--> inject deterministic Autoloader launch URL scheme
+    +--> pick a launch URL scheme (the app’s own, or one Autoloader injects)
     +--> sign with the configured certificate
     +--> install using Settings → Installation (Server by default, or idevice)
     +--> launch the newly installed app

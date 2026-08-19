@@ -11,8 +11,20 @@ import Foundation
 enum TargetLaunchScheme {
 	static let urlName = "dev.autoloader.launch"
 
+	/// Prefer a scheme the app already declares. Expo Router apps treat
+	/// unknown paths as errors, so the launch URL is only `scheme://`.
+	static func schemeForLaunch(atApp appURL: URL, bundleIdentifier: String) throws -> String {
+		if let existing = existingSchemes(atApp: appURL).first(where: isUsable) {
+			return existing
+		}
+
+		let generated = make(from: bundleIdentifier)
+		try inject(intoApp: appURL, scheme: generated)
+		return generated
+	}
+
 	/// Deterministic URL scheme derived from the effective bundle identifier.
-	/// The same bundle ID always produces the same scheme across processes.
+	/// Used only when the app has no usable CFBundleURLSchemes of its own.
 	static func make(from bundleIdentifier: String) -> String {
 		let digest = SHA256.hash(data: Data(bundleIdentifier.utf8))
 		let hex = digest.map { String(format: "%02x", $0) }.joined()
@@ -20,7 +32,7 @@ enum TargetLaunchScheme {
 	}
 
 	static func launchURL(scheme: String) -> URL {
-		URL(string: "\(scheme)://autoloader-installed")!
+		URL(string: "\(scheme)://")!
 	}
 
 	static func inject(intoApp appURL: URL, scheme: String) throws {
@@ -64,5 +76,29 @@ enum TargetLaunchScheme {
 			throw AutoloaderError.bundleIdentifierMissing
 		}
 		return bundleIdentifier
+	}
+
+	static func existingSchemes(atApp appURL: URL) -> [String] {
+		let plistURL = appURL.appendingPathComponent("Info.plist")
+		guard
+			let dictionary = NSDictionary(contentsOf: plistURL),
+			let types = dictionary["CFBundleURLTypes"] as? [Any]
+		else {
+			return []
+		}
+
+		return types.flatMap { item -> [String] in
+			guard let dict = item as? NSDictionary else { return [] }
+			return dict["CFBundleURLSchemes"] as? [String] ?? []
+		}
+	}
+
+	private static func isUsable(_ scheme: String) -> Bool {
+		let trimmed = scheme.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard !trimmed.isEmpty else { return false }
+		let lower = trimmed.lowercased()
+		if lower == "autoloader" { return false }
+		if lower.hasPrefix("http") { return false }
+		return true
 	}
 }

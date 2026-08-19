@@ -16,8 +16,9 @@ enum AutoloaderImporter {
 enum AutoloaderPrepare {
 	static func prepare(_ imported: ImportedArtifact) throws -> String {
 		let bundleIdentifier = try TargetLaunchScheme.bundleIdentifier(atApp: imported.appURL)
-		let scheme = TargetLaunchScheme.make(from: bundleIdentifier)
-		try TargetLaunchScheme.inject(intoApp: imported.appURL, scheme: scheme)
-		return scheme
+		return try TargetLaunchScheme.schemeForLaunch(
+			atApp: imported.appURL,
+			bundleIdentifier: bundleIdentifier
+		)
 	}
 }

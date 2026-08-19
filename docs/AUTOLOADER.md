@@ -17,7 +17,7 @@ autoloader://install?url=<encoded-https-url>
     +--> treat it as an IPA if Payload/*.app exists (filename does not matter)
     +--> or unwrap a ZIP that contains exactly one IPA
     +--> import
-    +--> inject a deterministic launch URL scheme
+    +--> pick a launch URL scheme (the app’s own, or one Autoloader injects)
     +--> sign with the configured certificate
     +--> install using the method in Settings → Installation
     |       same bundle ID => upgrade in place, never uninstall first
@@ -28,6 +28,8 @@ autoloader://install?url=<encoded-https-url>
 Jobs are serialized. A second link while a job is running replaces the pending request. An install that has already started is not cancelled.
 
 Keep the target app’s `CFBundleIdentifier` stable. Autoloader does not add PPQ suffixes or random IDs on this path.
+
+Launch is `scheme://` with no path. Expo Router apps treat extra paths as missing screens.
 
 ---
 
