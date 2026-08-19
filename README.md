@@ -2,7 +2,7 @@
 
 Autoloader is a [Feather](https://github.com/clamation/Feather) fork for one job: open an `autoloader://` link, install the IPA on this iPhone, and launch the new build.
 
-It is a development-loop tool, not a general IPA storefront. Feather’s certificate, pairing, and signing setup screens are kept so you can configure the app once. After that, a successful install should not ask for extra taps.
+It is a development-loop tool, not a general IPA storefront. Feather’s certificate and installation screens stay for first-time setup. After that, a successful install should not ask for extra taps.
 
 This project remains licensed under **GPL-3.0**. See [LICENSE](./LICENSE) and [UPSTREAM.md](./UPSTREAM.md).
 
@@ -16,7 +16,7 @@ That build is ad-hoc signed (not Apple-signed). Import it into Feather, sign it 
 
 ## Docs
 
-- [How Autoloader works, plus the CI/PR install-link guide](./docs/AUTOLOADER.md)
+- [How Autoloader works](./docs/AUTOLOADER.md)
 - [Short contract for LLMs](./docs/LLM.md)
 
 ## What it does
@@ -34,7 +34,7 @@ Autoloader opens
     +--> import/extract
     +--> inject deterministic Autoloader launch URL scheme
     +--> sign with the configured certificate
-    +--> install/upgrade through idevice/installd
+    +--> install using Settings → Installation (Server by default, or idevice)
     +--> launch the newly installed app
 ```
 
@@ -93,7 +93,7 @@ Direct IPAs are detected by archive structure (`Payload/*.app`), not file extens
 2. Open `Feather.xcworkspace` (not the project).
 3. Choose your signing team in Xcode. This repo does not include an Apple Team ID.
 4. Build and install Autoloader on a physical iPhone.
-5. Import a signing certificate and an idevice pairing file using the existing Settings flows.
+5. Import a signing certificate. Leave Installation Type on **Server** unless you want idevice (pairing file, and on older iOS a loopback VPN during the install only).
 6. Leave **Automatic installs** on. Add allowed artifact hosts if you want a host allowlist. HTTP is off unless you enable **Allow insecure HTTP** for LAN/Tailscale servers.
 
 Running a build after that should only require opening the `autoloader://` link.

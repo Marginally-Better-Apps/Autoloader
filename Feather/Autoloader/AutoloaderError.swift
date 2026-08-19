@@ -96,7 +96,7 @@ enum AutoloaderError: Error, LocalizedError {
 		case .certificateMissing:
 			return "Autoloader needs a signing certificate configured."
 		case .pairingMissing:
-			return "Autoloader needs an idevice pairing file. Import one in Settings → Installation."
+			return "idevice install is selected, which needs a pairing file. To skip pairing and VPN, set Installation Type to Server in Settings → Installation."
 		case .signingFailed(let message):
 			return "Signing failed: \(message)"
 		case .installationFailed(let message):

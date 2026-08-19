@@ -1,12 +1,18 @@
 # LLM guide
 
-Follow [AUTOLOADER.md](./AUTOLOADER.md), especially **For LLMs: put the install link on the PR**.
+Read [AUTOLOADER.md](./AUTOLOADER.md).
 
-Short contract:
+Autoloader is the on-phone installer. An `autoloader://install?url=` link is the API.
 
-1. After CI builds an unsigned IPA, upload the IPA bytes to a public HTTPS host (Planista or a GitHub Release). Not `actions/upload-artifact`.
-2. Build `autoloader://install?url=` + a single `urllib.parse.quote(..., safe="")` of that permalink.
-3. Host a tiny HTML trampoline that `location.replace`s that Autoloader URL, and put the HTML permalink on the PR so it is tappable.
-4. Also paste the raw `autoloader://` URL in a fenced code block.
+```
+autoloader://install?url=<percent-encoded-https-url-to-ipa-or-zip>
+```
 
-If Autoloader’s host allowlist is nonempty, include `planista.shloklab.us` and/or `github.com`.
+Encode the artifact URL once:
+
+```python
+from urllib.parse import quote
+print("autoloader://install?url=" + quote(artifact_url, safe=""))
+```
+
+Do not change Autoloader into a storefront. Do not invent extra signing or install screens on the success path.

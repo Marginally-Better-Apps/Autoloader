@@ -1,40 +1,37 @@
 # Autoloader
 
-Autoloader is a development-loop installer. After it is set up on an iPhone, a successful install is one action: open an `autoloader://` link. There is no certificate picker, no “Start Signing” button, and no install confirmation.
+Autoloader is a development-loop installer on the iPhone. After it is set up, a successful run is one action: open an `autoloader://` link. It downloads the artifact, signs it with the certificate already in Settings, installs or upgrades the app, and launches it.
 
-This is not a storefront. Feather’s certificate, pairing, and signing screens remain for first-time setup only.
+This is not a storefront. Feather’s certificate and installation screens remain for first-time setup.
 
-Upstream signing and idevice details live in [HOW_IT_WORKS.md](../HOW_IT_WORKS.md). Fork point: [UPSTREAM.md](../UPSTREAM.md).
-
-If you are an LLM adding Autoloader to another app’s CI, read **[For LLMs: put the install link on the PR](#for-llms-put-the-install-link-on-the-pr)** and follow it exactly.
+Upstream signing internals: [HOW_IT_WORKS.md](../HOW_IT_WORKS.md). Fork point: [UPSTREAM.md](../UPSTREAM.md).
 
 ---
 
-## How it works
+## Pipeline
 
 ```
-CI or another app
-    |
-    | open:
-    | autoloader://install?url=<percent-encoded-https-ipa-url>
-    v
-Autoloader (already on the iPhone)
+autoloader://install?url=<encoded-https-url>
     |
     +--> download artifact
-    +--> treat it as an IPA if Payload/*.app exists (extension does not matter)
+    +--> treat it as an IPA if Payload/*.app exists (filename does not matter)
     +--> or unwrap a ZIP that contains exactly one IPA
     +--> import
     +--> inject a deterministic launch URL scheme
-    +--> sign with the certificate already configured in Autoloader
-    +--> install or upgrade through idevice / installd
-    |       same bundle ID => upgrade in place, do not uninstall
+    +--> sign with the configured certificate
+    +--> install using the method in Settings → Installation
+    |       same bundle ID => upgrade in place, never uninstall first
     +--> launch the app
     +--> delete temp copies (unless Keep build artifacts is on)
 ```
 
-Cold start, background, and already-open Autoloader all handle the same URL. Jobs are serialized. If a second link arrives during a job, the newest pending request wins. Installation that has already started is not cancelled.
+Jobs are serialized. A second link while a job is running replaces the pending request. An install that has already started is not cancelled.
 
-### Protocol
+Keep the target app’s `CFBundleIdentifier` stable. Autoloader does not add PPQ suffixes or random IDs on this path.
+
+---
+
+## Protocol
 
 ```
 autoloader://install?v=1&url=<percent-encoded-artifact-url>
@@ -49,22 +46,16 @@ autoloader://install?url=<encoded-url>
 | Query | Default | Meaning |
 | --- | --- | --- |
 | `v` | `1` | Protocol version. Only `1` is supported. |
-| `url` | required | HTTPS artifact URL. Must be encoded as a single query value. |
-| `sha256` | none | 64 lowercase hex characters. Optional integrity check. |
+| `url` | required | Artifact URL. Encoded as one query value. |
+| `sha256` | none | Optional 64-character lowercase hex digest. |
 | `launch` | `1` | `0` installs without launching. |
 
-Build the URL with a query encoder. Do not hand-roll percent-encoding of the inner URL.
-
-Python:
+Build the URL with a query encoder so inner `?`, `&`, and `=` on the artifact URL survive.
 
 ```python
 from urllib.parse import quote
-
-artifact = "https://planista.shloklab.us/LJGB4m2PFXLpiX-g"
-print("autoloader://install?url=" + quote(artifact, safe=""))
+print("autoloader://install?url=" + quote(artifact_url, safe=""))
 ```
-
-Swift:
 
 ```swift
 var components = URLComponents()
@@ -77,181 +68,47 @@ components.queryItems = [
 let url = components.url
 ```
 
-Inner `?`, `&`, and `=` on the artifact URL must survive. That is why `url` is a query item, not concatenated by hand.
+`url` must be `https` (or `http` if **Allow insecure HTTP** is on). `file://` is rejected. If **Allowed artifact hosts** is nonempty, the host must match exactly.
 
-### What Autoloader will fetch
-
-Allowed artifact schemes: `https`. `http` only if **Allow insecure HTTP** is on (LAN / Tailscale). `file://` is rejected.
-
-If **Allowed artifact hosts** is empty, any HTTPS host is allowed. If it is nonempty, the host must match exactly (for example `planista.shloklab.us`, `github.com`).
-
-GitHub Actions artifact zip URLs do **not** work. They require a logged-in browser session. Autoloader’s downloader will get an HTML login page, not an IPA.
-
-Public URLs that do work:
-
-- Planista permalinks (`https://planista.shloklab.us/...`)
-- GitHub Release assets on a public repo (`https://github.com/org/repo/releases/download/tag/App.ipa`)
-- Any other anonymous HTTPS URL that returns the bytes
-
-The download does not need a `.ipa` filename. Autoloader inspects ZIP structure. Direct IPA = `Payload/*.app`. Wrapper ZIP must contain exactly one IPA.
-
-Keep the app’s `CFBundleIdentifier` stable across builds. Autoloader does not add PPQ suffixes or random IDs on the automatic path, so upgrades replace the same home-screen icon and keep sandbox data.
-
-### Phone setup (once)
-
-1. Sideload Autoloader itself (unsigned IPA on [Releases](https://github.com/Marginally-Better-Apps/Autoloader/releases), signed with Feather).
-2. Import a signing certificate.
-3. Import an idevice pairing file (Settings → Installation).
-4. Leave Automatic installs on.
-
-After that, opening an `autoloader://install` link is the whole loop.
+Autoloader’s downloader is a plain `URLSession` GET. The `url` value has to be something that returns IPA/ZIP bytes without a browser login.
 
 ---
 
-## For LLMs: put the install link on the PR
+## How installation works on the phone
 
-This is the product. After CI produces an unsigned IPA, the pull request must show a link the human can open on the iPhone. Do not stop at “Download the GitHub Actions artifact.”
+Signing always happens on-device with the certificate you already imported. Installation is a separate step. Autoloader uses **whatever Installation Type is selected in Settings → Installation**, the same switch Feather uses.
 
-### Goal
+### Server (default)
 
-When iOS CI finishes, the PR comment contains:
+This is the same path you already use in Feather. Autoloader hosts the signed IPA on a local server on the phone, then asks iOS to install it with `itms-services://` (fully local) or the semi-local web trick.
 
-1. A **tappable HTTPS** page that opens Autoloader.
-2. The raw `autoloader://install?url=...` URL in a copy-paste code block, in case the HTTPS trampoline is blocked.
-3. The public IPA permalink.
+- No pairing file.
+- No VPN.
+- No extra app to keep running.
 
-The human taps the HTTPS link on the phone (or pastes the `autoloader://` URL). Autoloader downloads, signs, upgrades, and launches. No extra taps.
+iOS itself performs the install. You may still get the system “Install” sheet. That is iOS, not Autoloader’s signing UI.
 
-### Hard rules
+Fully local needs the SSL certificates Feather already downloads from backloop.dev. Semi local uses the palera plist helper, same as Feather.
 
-- The IPA URL in `url=` must be anonymously fetchable over HTTPS. GitHub Actions `actions/upload-artifact` links are not.
-- Encode the artifact URL once as the `url` query value. Do not double-encode. Do not leave it unencoded.
-- Upload the IPA itself, not a zip of a zip of a zip. A wrapper ZIP is fine only if it contains exactly one IPA.
-- Do not mutate the app bundle ID per build.
-- Do not log or embed signing certificates, P12 passwords, or pairing files in the comment.
-- Update the same PR comment on later pushes (HTML marker), same as other preview comments.
+### idevice
 
-### Preferred host
+This talks to `installd` the way a computer running `ideviceinstaller` would.
 
-Upload the IPA to Planista. It returns a permalink Autoloader can GET.
+It needs a **pairing file** (exported once from a computer; see Settings → Installation).
 
-```bash
-curl --fail-with-body -sS \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary @App-unsigned.ipa \
-  https://planista.shloklab.us/
-```
+On **iOS before 17.4**, it also needs **LocalDevVPN** (or an equivalent loopback VPN) **while the install is happening**. That VPN is not a general privacy VPN. It creates a tunnel so the app can reach lockdownd at `10.7.0.1` as if a USB computer were attached. You do not leave it on all day. You only need it connected for an idevice install.
 
-Stdout is the permalink, for example `https://planista.shloklab.us/LJGB4m2PFXLpiX-g`.
+On **iOS 17.4 and later**, Feather uses RSD instead of that `10.7.0.1` TCP tunnel, and the in-app LocalDevVPN buttons are hidden. A pairing file is still required for idevice.
 
-GitHub Release assets on a **public** repo are the durable alternative:
+idevice is more reliable and usually skips the system install sheet. It is optional. If you do not want pairing or VPN, leave Installation Type on **Server**.
 
-`https://github.com/<org>/<repo>/releases/download/<tag>/<file>.ipa`
+---
 
-If Autoloader’s host allowlist is nonempty, add `planista.shloklab.us` and/or `github.com`.
+## Setup on the phone
 
-### Make the PR link tappable
+1. Install Autoloader (sign its IPA with Feather the first time).
+2. Import a signing certificate.
+3. Leave **Automatic installs** on.
+4. Leave Installation Type on **Server** unless you specifically want idevice.
 
-GitHub often does not turn `autoloader://` into a clickable link. Host a tiny HTTPS trampoline and put **that** URL on the PR.
-
-`install.html`:
-
-```html
-<!doctype html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Install with Autoloader</title>
-<p><a id="go" href="AUTOLOADER_URL">Install this build</a></p>
-<p>If nothing happens, copy the Autoloader URL from the pull request and open it on the iPhone.</p>
-<script>
-  location.replace(document.getElementById("go").href);
-</script>
-```
-
-Replace `AUTOLOADER_URL` with the encoded `autoloader://install?url=...` string, upload as `text/html`:
-
-```bash
-curl --fail-with-body -sS \
-  -H 'Content-Type: text/html; charset=utf-8' \
-  --data-binary @install.html \
-  https://planista.shloklab.us/
-```
-
-Post the HTML permalink as **Install with Autoloader**.
-
-### GitHub Actions snippet
-
-Run this after the unsigned IPA exists. Change the IPA path. Keep any existing demo-video upload; add Autoloader next to it.
-
-```yaml
-      - name: Publish IPA for Autoloader
-        id: autoloader
-        run: |
-          set -euo pipefail
-          IPA="artifacts/App-unsigned.ipa"
-          test -f "$IPA"
-
-          ARTIFACT_URL="$(curl --fail-with-body -sS --retry 3 --retry-all-errors \
-            -H 'Content-Type: application/octet-stream' \
-            --data-binary @"$IPA" \
-            https://planista.shloklab.us/)"
-          export ARTIFACT_URL
-
-          AUTOLOADER_URL="$(python3 -c 'from urllib.parse import quote; import os; print("autoloader://install?url=" + quote(os.environ["ARTIFACT_URL"], safe=""))')"
-          export AUTOLOADER_URL
-
-          python3 - <<'PY'
-          import os, pathlib
-          url = os.environ["AUTOLOADER_URL"]
-          pathlib.Path("install.html").write_text(
-              "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-              f"<title>Install with Autoloader</title><p><a id=go href='{url}'>Install this build</a></p>"
-              "<script>location.replace(document.getElementById('go').href)</script>",
-              encoding="utf-8",
-          )
-          PY
-
-          TAP_URL="$(curl --fail-with-body -sS --retry 3 --retry-all-errors \
-            -H 'Content-Type: text/html; charset=utf-8' \
-            --data-binary @install.html \
-            https://planista.shloklab.us/)"
-
-          {
-            echo "artifact_url=$ARTIFACT_URL"
-            echo "autoloader_url=$AUTOLOADER_URL"
-            echo "tap_url=$TAP_URL"
-          } >> "$GITHUB_OUTPUT"
-```
-
-PR comment body (upsert with an HTML marker, same pattern as existing preview comments):
-
-```markdown
-<!-- autoloader-preview -->
-## Autoloader
-
-- [Install this build](TAP_URL) (opens Autoloader on the iPhone)
-- Artifact: ARTIFACT_URL
-
-```
-AUTOLOADER_URL
-```
-
-Unsigned IPA. Autoloader signs it with the certificate already on the phone.
-_Built from SHORT_SHA._
-```
-
-Replace `TAP_URL`, `ARTIFACT_URL`, `AUTOLOADER_URL`, and `SHORT_SHA`. Keep the fenced code block so the `autoloader://` line is easy to copy if the HTTPS link is not tappable in the GitHub app.
-
-### Checklist before you claim you are done
-
-- [ ] CI built an unsigned IPA (or a ZIP with exactly one IPA).
-- [ ] That file was uploaded to Planista or a public GitHub Release, not only `upload-artifact`.
-- [ ] The PR comment has a tappable HTTPS Autoloader trampoline.
-- [ ] The PR comment has the raw `autoloader://install?url=...` line.
-- [ ] Opening that link on a configured iPhone is the only action required.
-
-### What not to do
-
-- Do not paste GitHub Actions artifact URLs into `autoloader://install?url=`.
-- Do not tell the human to download the IPA, AirDrop it, and sign it in Feather for everyday PR builds. That is what Autoloader replaced.
-- Do not open Autoloader’s signing UI from CI. Setup is interactive; running a build is not.
+Then open `autoloader://install?url=...`.

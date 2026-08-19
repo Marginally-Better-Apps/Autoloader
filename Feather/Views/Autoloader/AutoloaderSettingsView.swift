@@ -19,7 +19,7 @@ struct AutoloaderSettingsView: View {
 				Toggle("Allow insecure HTTP", isOn: $settings.allowInsecureHTTP)
 				Toggle("Keep build artifacts", isOn: $settings.keepBuildArtifacts)
 			} footer: {
-				Text("Automatic installs always use the idevice/installd backend. HTTP is for LAN or Tailscale development servers and is off by default. When Keep build artifacts is off, Autoloader deletes the imported and signed copies after a successful install.")
+				Text("Automatic installs use the method in Settings → Installation. Server (the default) does not need a pairing file or VPN. idevice does. HTTP artifact URLs are for LAN or Tailscale and are off by default. When Keep build artifacts is off, Autoloader deletes imported and signed copies after a successful install.")
 			}
 
 			Section {
@@ -57,7 +57,7 @@ struct AutoloaderSettingsView: View {
 				NavigationLink("Certificates") {
 					CertificatesView()
 				}
-				NavigationLink("Installation & pairing") {
+				NavigationLink("Installation") {
 					InstallationView()
 				}
 				NavigationLink("Signing options") {
