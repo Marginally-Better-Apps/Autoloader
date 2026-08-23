@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open in Autoloader</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: #1c1210;
+      color: #f4e8e4;
+    }
+    main { width: min(28rem, calc(100% - 2rem)); text-align: center; }
+    a.install {
+      display: block;
+      padding: 1.1rem 1.25rem;
+      border-radius: 1rem;
+      background: #f67966;
+      color: #1c1210;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    p { line-height: 1.45; color: #d8c4bd; }
+    code { color: #f98a79; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <main id="main"></main>
+  <script>
+    function target() {
+      const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
+      if (hash.startsWith("autoloader:")) return hash;
+      const ipa = new URLSearchParams(location.search).get("url");
+      if (ipa && /^https?:\/\//i.test(ipa)) {
+        return "autoloader://install?url=" + encodeURIComponent(ipa);
+      }
+      return null;
+    }
+
+    const open = target();
+    const main = document.getElementById("main");
+    if (!open) {
+      main.innerHTML =
+        "<p>HTTPS shim for Autoloader. Put an IPA URL on <code>?url=</code> or an <code>autoloader://</code> link after <code>#</code>.</p>";
+    } else {
+      main.innerHTML =
+        "<p>Opening Autoloader.</p>" +
+        "<p><a class=\"install\" href=\"" + open.replace(/"/g, "") + "\">Open in Autoloader</a></p>" +
+        "<p>GitHub’s in-app browser may swallow this. Use Safari if nothing happens.</p>";
+      location.replace(open);
+    }
+  </script>
+</body>
+</html>
