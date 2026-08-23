@@ -74,6 +74,12 @@ let url = components.url
 
 Autoloader’s downloader is a plain `URLSession` GET. The `url` value has to be something that returns IPA/ZIP bytes without a browser login.
 
+GitHub markdown will not make `autoloader://` tappable. Use the shared shim:
+
+```
+https://marginally-better-apps.github.io/Autoloader/?url=<percent-encoded IPA URL>
+```
+
 ---
 
 ## How installation works on the phone

@@ -1,11 +1,16 @@
 # PR cycle for apps Autoloader installs
 
-GitHub will not let Autoloader fetch Actions artifacts (login wall), and GitHub markdown will not make `autoloader://` tappable. PR CI should therefore:
+GitHub Actions artifact URLs 404 unless you are logged in. GitHub markdown will not make `autoloader://` tappable.
 
 1. Publish the unsigned IPA as a public prerelease tagged `pr-<number>` with a stable filename.
-2. Put a GitHub Pages page at `/pr/<number>/` that opens `autoloader://install?url=<encoded release URL>`.
-3. Comment the Pages `https://` link on the PR.
+2. Comment this HTTPS link:
 
-QR Scanner is the reference implementation: [AUTOLOADER_DEV_CYCLE.md](https://github.com/Marginally-Better-Apps/MB-QR-Code-Scanner/blob/main/docs/AUTOLOADER_DEV_CYCLE.md).
+```
+https://marginally-better-apps.github.io/Autoloader/?url=<percent-encoded release IPA URL>
+```
+
+That page is the shared shim. Do not add per-repo GitHub Pages trampolines.
+
+QR Scanner still shows the older per-PR page pattern; new repos should use the shim above.
 
 Do not upload the IPA to Planista. Do not use nightly.link. Leave Autoloader’s Installation Type on **Server**.

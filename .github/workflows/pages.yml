@@ -1,0 +1,25 @@
+name: Pages shim
+
+on:
+  push:
+    branches: [autoloader]
+    paths:
+      - pages/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: pages
+          branch: gh-pages
+          clean: true
+          commit-message: deploy Autoloader HTTPS shim
