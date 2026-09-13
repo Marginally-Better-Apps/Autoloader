@@ -31,6 +31,7 @@ struct Certificate: Codable {
 
 	enum CodingKeys: String, CodingKey {
 		case AppIDName,
+		     ApplicationIdentifierPrefix,
 		     CreationDate,
 		     Platform,
 		     IsXcodeManaged,

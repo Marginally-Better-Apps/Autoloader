@@ -36,8 +36,9 @@ struct LibraryView: View {
 	// horror
 	private func filteredAndSortedApps<T>(from apps: FetchedResults<T>) -> [T] where T: NSManagedObject {
 		apps.filter {
-			_searchText.isEmpty ||
-				(($0.value(forKey: "name") as? String)?.localizedCaseInsensitiveContains(_searchText) ?? false)
+			AutoloaderRetention.includes($0.value(forKey: "date") as? Date) &&
+				(_searchText.isEmpty ||
+					(($0.value(forKey: "name") as? String)?.localizedCaseInsensitiveContains(_searchText) ?? false))
 		}
 	}
 	

@@ -158,6 +158,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
 		_addDefaultCertificates()
+		Storage.shared.pruneApps(olderThan: AutoloaderRetention.cutoff())
 		if let url = launchOptions?[.url] as? URL {
 			AutoloaderCoordinator.shared.handle(url: url)
 		}

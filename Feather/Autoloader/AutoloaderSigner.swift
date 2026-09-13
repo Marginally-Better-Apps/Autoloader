@@ -28,6 +28,13 @@ enum AutoloaderSigner {
 		options.post_installAppAfterSigned = false
 		options.post_deleteAppAfterSigned = false
 
+		let entitlementsURL = try await resolvedEntitlementsFile(
+			for: certificate,
+			bundleIdentifier: imported.bundleIdentifier
+		)
+		options.appEntitlementsFile = entitlementsURL
+		defer { try? FileManager.default.removeItem(at: entitlementsURL) }
+
 		do {
 			var signed = try await FR.signPackage(
 				imported,
@@ -50,6 +57,40 @@ enum AutoloaderSigner {
 		} catch {
 			throw AutoloaderError.signingFailed(AutoloaderErrorFormatting.describe(error))
 		}
+	}
+
+	private static func resolvedEntitlementsFile(
+		for certificate: CertificatePair,
+		bundleIdentifier: String
+	) async throws -> URL {
+		let data = try await MainActor.run { () throws -> Data in
+			guard
+				let profile = Storage.shared.getProvisionFileDecoded(for: certificate),
+				let teamIdentifier = profile.TeamIdentifier.first
+			else {
+				throw AutoloaderError.signingFailed("The provisioning profile has no Team ID.")
+			}
+
+			let profileEntitlements = profile.Entitlements?.mapValues(\.value) ?? [:]
+			let resolved = try SigningEntitlementResolver.resolve(
+				profileEntitlements: profileEntitlements,
+				teamIdentifier: teamIdentifier,
+				applicationIdentifierPrefix: profile.ApplicationIdentifierPrefix?.first,
+				bundleIdentifier: bundleIdentifier
+			)
+			return try PropertyListSerialization.data(
+				fromPropertyList: resolved,
+				format: .xml,
+				options: 0
+			)
+		}
+
+		let directory = FileManager.default.temporaryDirectory
+			.appendingPathComponent("AutoloaderSigning", isDirectory: true)
+		try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+		let url = directory.appendingPathComponent("\(UUID().uuidString).entitlements")
+		try data.write(to: url, options: .atomic)
+		return url
 	}
 
 	@MainActor
