@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [autoloader]
+  push:
+    branches: [autoloader]
+
+jobs:
+  tests:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: swift test
+
+  iphoneos-build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: |
+          if [ -d /Applications/Xcode_26.3.0.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.3.0.app
+          elif [ -d /Applications/Xcode.app ]; then
+            sudo xcode-select -s /Applications/Xcode.app
+          fi
+          xcodebuild -version
+
+      - name: Build unsigned iPhone IPA
+        run: make iphoneos
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Autoloader-unsigned
+          path: packages/Autoloader.ipa
+          if-no-files-found: error

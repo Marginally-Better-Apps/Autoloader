@@ -9,6 +9,28 @@ import CoreData
 
 // MARK: - Class extension: Apps (Shared)
 extension Storage {
+	func pruneApps(olderThan cutoff: Date) {
+		prune(Signed.self, olderThan: cutoff)
+		prune(Imported.self, olderThan: cutoff)
+		saveContext()
+	}
+
+	private func prune<T: NSManagedObject>(_ type: T.Type, olderThan cutoff: Date) {
+		let request = T.fetchRequest()
+		request.predicate = NSPredicate(format: "date < %@", cutoff as NSDate)
+		guard let apps = try? context.fetch(request) as? [T] else { return }
+
+		for app in apps {
+			if let presentable = app as? AppInfoPresentable,
+				let url = getUuidDirectory(for: presentable)
+			{
+				try? FileManager.default.removeItem(at: url)
+				deleteSourceMetadata(for: presentable.uuid)
+			}
+			context.delete(app)
+		}
+	}
+
 	func getUuidDirectory(for app: AppInfoPresentable) -> URL? {
 		guard let uuid = app.uuid else { return nil }
 		return app.isSigned

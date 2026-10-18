@@ -35,20 +35,6 @@ struct AutoloaderResult: Sendable, Equatable {
 	let duration: TimeInterval
 }
 
-struct AutoloaderHistoryEntry: Codable, Identifiable, Equatable, Sendable {
-	let id: UUID
-	let appName: String?
-	let bundleIdentifier: String?
-	let version: String?
-	let sourceURL: String
-	let installedAt: Date
-	let success: Bool
-	let duration: TimeInterval
-	let errorDescription: String?
-	let stage: String?
-	let launchSucceeded: Bool?
-}
-
 enum AutoloaderState: Equatable {
 	case idle
 	case downloading(progress: Double)

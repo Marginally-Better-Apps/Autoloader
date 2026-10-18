@@ -18,16 +18,22 @@ autoloader://install?url=<encoded-https-url>
     +--> or unwrap a ZIP that contains exactly one IPA
     +--> import
     +--> pick a launch URL scheme (the app’s own, or one Autoloader injects)
+    +--> resolve the profile's wildcard identity for the app's bundle ID
     +--> sign with the configured certificate
     +--> install using the method in Settings → Installation
     |       same bundle ID => upgrade in place, never uninstall first
     +--> launch the app
-    +--> delete temp copies (unless Keep build artifacts is on)
+    +--> delete the imported temp copy (unless Keep build artifacts is on)
+    +--> retain the signed app in Library for 30 days
 ```
 
 Jobs are serialized. A second link while a job is running replaces the pending request. An install that has already started is not cancelled.
 
 Keep the target app’s `CFBundleIdentifier` stable. Autoloader does not add PPQ suffixes or random IDs on this path.
+
+Autoloader builds concrete `application-identifier` and keychain entitlements from the selected provisioning profile and the final bundle ID. This avoids leaving a wildcard such as `TEAM.*` in the executable signature.
+
+Library apps and Recent history are limited to the last 30 days. Recent history also keeps its existing 50-entry maximum.
 
 Launch is `scheme://` with no path. Expo Router apps treat extra paths as missing screens.
 

@@ -165,14 +165,21 @@ final class AutoloaderCoordinator: ObservableObject {
 	) async {
 		try? FileManager.default.removeItem(at: directory)
 
-		if AutoloaderSettings.shared.keepBuildArtifacts {
-			return
-		}
-
-		if let imported, let object = Storage.shared.imported(uuid: imported.uuid) {
+		let artifacts = AutoloaderCleanupPolicy.artifactsToDelete(
+			keepBuildArtifacts: AutoloaderSettings.shared.keepBuildArtifacts,
+			hasImportedArtifact: imported != nil,
+			hasSignedArtifact: signed != nil
+		)
+		if artifacts.contains(.imported),
+			let imported,
+			let object = Storage.shared.imported(uuid: imported.uuid)
+		{
 			Storage.shared.deleteApp(for: object)
 		}
-		if let signed, let object = Storage.shared.signed(uuid: signed.uuid) {
+		if artifacts.contains(.signed),
+			let signed,
+			let object = Storage.shared.signed(uuid: signed.uuid)
+		{
 			Storage.shared.deleteApp(for: object)
 		}
 		AutoloaderLog.info(jobID, "cleaned temporary artifacts")
